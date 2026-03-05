@@ -87,7 +87,6 @@ format_interval() {
   fi
 }
 
-INTERVAL_RAW="$INTERVAL"
 INTERVAL_SECS=$(parse_interval "$INTERVAL")
 INTERVAL_DISPLAY=$(format_interval "$INTERVAL_SECS")
 
