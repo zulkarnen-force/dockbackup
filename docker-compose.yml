@@ -1,0 +1,55 @@
+services:
+  backup:
+    image: zulkarnen/docker-postgres-backup
+    container_name: backup-agent
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./backups:/backup
+    environment:
+      BACKUP_DIR: /backup
+      LABEL_FILTER: backup.enable=true
+      INTERVAL: 5m # supports: 60s, 5m, 1h (default: 5m)
+      BACKUP_FORMAT: compress # default: compress
+
+      # ── Rclone (optional) ──────────────────────────────────
+      # Backup method: local | rclone | both (default: local)
+      #   local  = save to local directory only
+      #   rclone = upload to rclone only (local file deleted after upload)
+      #   both   = save locally AND upload to rclone
+      BACKUP_METHOD: "rclone"
+
+      # Provider 1 ── r2 | mega | pcloud (leave empty to skip)
+      RCLONE_1_PROVIDER: "pcloud"
+      RCLONE_1_NAME: "remote1"
+      RCLONE_1_REMOTE_PATH: "backups/local"
+      # R2 (Cloudflare S3)
+      # RCLONE_1_ACCESS_KEY_ID: ""
+      # RCLONE_1_SECRET_ACCESS_KEY: ""
+      # RCLONE_1_ENDPOINT: "https://xxx.r2.cloudflarestorage.com"
+      # RCLONE_1_ACL: "private"
+      # Mega
+      # RCLONE_1_USER: ""
+      # RCLONE_1_PASS: ""
+      # PCloud
+      RCLONE_1_HOSTNAME: "api.pcloud.com"
+      RCLONE_1_TOKEN: "pJd97ZDnONSzyJXpmZOqh3kkZR807FiHocfBC4MvHlnXwaHJufx2k"
+
+      # Provider 2 ── r2 | mega | pcloud (leave empty to skip)
+      RCLONE_2_PROVIDER: ""
+      RCLONE_2_NAME: "remote2"
+      RCLONE_2_REMOTE_PATH: "backup"
+      # R2 (Cloudflare S3)
+      # RCLONE_2_ACCESS_KEY_ID: ""
+      # RCLONE_2_SECRET_ACCESS_KEY: ""
+      # RCLONE_2_ENDPOINT: "https://xxx.r2.cloudflarestorage.com"
+      # RCLONE_2_ACL: "private"
+      # Mega
+      # RCLONE_2_USER: ""
+      # RCLONE_2_PASS: ""
+      # PCloud
+      # RCLONE_2_HOSTNAME: "api.pcloud.com"
+      # RCLONE_2_TOKEN: ""

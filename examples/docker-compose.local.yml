@@ -1,0 +1,32 @@
+# ── Example: Local backup only ───────────────────────────────────────
+# The simplest setup — backs up all labeled containers to a local volume.
+
+services:
+  # ── Your database ──────────────────────────────────────────────────
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    labels:
+      - backup.enable=true
+    environment:
+      POSTGRES_DB: myapp
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  # ── Backup agent ──────────────────────────────────────────────────
+  backup:
+    image: zulkarnen/docker-db-backup:latest
+    container_name: backup-agent
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./backups:/backup
+    environment:
+      INTERVAL: 1h
+      BACKUP_FORMAT: compress
+      MAX_FILES: 7
+
+volumes:
+  pgdata:

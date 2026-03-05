@@ -1,0 +1,61 @@
+# ── Example: Mixed databases ────────────────────────────────────────
+# PostgreSQL, MySQL, and MongoDB all backed up by a single agent.
+
+services:
+  # ── PostgreSQL ─────────────────────────────────────────────────────
+  postgres-db:
+    image: postgres:16
+    restart: unless-stopped
+    labels:
+      - backup.enable=true
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  # ── MySQL ──────────────────────────────────────────────────────────
+  mysql-db:
+    image: mysql:8
+    restart: unless-stopped
+    labels:
+      - backup.enable=true
+    environment:
+      MYSQL_DATABASE: shop
+      MYSQL_USER: shop
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: rootsecret
+    volumes:
+      - mysqldata:/var/lib/mysql
+
+  # ── MongoDB ────────────────────────────────────────────────────────
+  mongo-db:
+    image: mongo:7
+    restart: unless-stopped
+    labels:
+      - backup.enable=true
+    environment:
+      MONGO_INITDB_DATABASE: analytics
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: secret
+    volumes:
+      - mongodata:/data/db
+
+  # ── Backup agent ──────────────────────────────────────────────────
+  backup:
+    image: zulkarnen/docker-db-backup:latest
+    container_name: backup-agent
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./backups:/backup
+    environment:
+      INTERVAL: 1h
+      BACKUP_FORMAT: compress
+      MAX_FILES: 7
+
+volumes:
+  pgdata:
+  mysqldata:
+  mongodata:

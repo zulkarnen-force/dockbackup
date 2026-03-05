@@ -1,0 +1,38 @@
+# ── Example: Upload to cloud only (rclone) ──────────────────────────
+# Backups are uploaded to PCloud and the local file is deleted.
+
+services:
+  # ── Your database ──────────────────────────────────────────────────
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    labels:
+      - backup.enable=true
+    environment:
+      POSTGRES_DB: myapp
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  # ── Backup agent ──────────────────────────────────────────────────
+  backup:
+    image: zulkarnen/docker-db-backup:latest
+    container_name: backup-agent
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      INTERVAL: 6h
+      BACKUP_FORMAT: compress
+      MAX_FILES: 14
+      BACKUP_METHOD: rclone
+
+      # PCloud
+      RCLONE_1_PROVIDER: pcloud
+      RCLONE_1_NAME: mypcloud
+      RCLONE_1_REMOTE_PATH: backups/myserver
+      RCLONE_1_TOKEN: "<your-pcloud-access-token>"
+
+volumes:
+  pgdata:
