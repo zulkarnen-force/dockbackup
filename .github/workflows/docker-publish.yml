@@ -9,7 +9,7 @@ on:
 
 env:
   REGISTRY: docker.io
-  IMAGE_NAME: ${{ github.repository_owner }}/docker-db-backup
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/docker-db-backup
 
 permissions:
   contents: read
