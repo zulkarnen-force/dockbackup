@@ -14,7 +14,7 @@ docker pull zulkarnen/docker-db-backup:latest
 
 - **Auto-discovery** — finds containers with a configurable Docker label
 - **Auto-detect database type** — identifies PostgreSQL, MySQL/MariaDB, or MongoDB from the container image name
-- **Multiple backup formats** — plain SQL or compressed (pg_dump -Fc, gzip, mongodump archive)
+- **Multiple backup formats** — plain SQL or compressed (pg_dump -Fc, gzip, mongodump --gzip archive)
 - **Cloud upload** — upload backups to up to **2 rclone providers** simultaneously (R2, Mega, PCloud)
 - **Flexible backup method** — `local` only, `rclone` only, or `both`
 - **Retention policy** — keeps the last N backups (applies to both local and remote storage)
@@ -85,11 +85,11 @@ That's it. The agent will discover all labeled containers and back them up every
 
 ### Backup Format
 
-| Database        | `plain`    | `compress`            |
-| --------------- | ---------- | --------------------- |
-| PostgreSQL      | `.sql`     | `.dump` (pg_dump -Fc) |
-| MySQL / MariaDB | `.sql`     | `.sql.gz`             |
-| MongoDB         | `.archive` | `.archive`            |
+| Database        | `plain`    | `compress`                    |
+| --------------- | ---------- | ----------------------------- |
+| PostgreSQL      | `.sql`     | `.dump` (pg_dump -Fc)         |
+| MySQL / MariaDB | `.sql`     | `.sql.gz`                     |
+| MongoDB         | `.archive` | `.archive` (mongodump --gzip) |
 
 ### Rclone Providers (up to 2 slots)
 
@@ -140,6 +140,8 @@ The agent inspects the container's **image name** to determine the database type
 | `*mongo*`     | MongoDB                      |
 
 This covers official images (`postgres:16`, `mysql:8`, `mongo:7`), Bitnami images (`bitnami/postgresql`, `bitnami/mongodb`), and custom images containing these keywords.
+
+> **Note — MongoDB:** Unlike PostgreSQL and MySQL (which use `docker exec`), MongoDB backups run the agent's own `mongodump` binary and connect to the container via its Docker network IP. This is necessary because MongoDB 6.0+ images no longer bundle `mongodump`. The backup agent must share a Docker network with the MongoDB container (automatic when both are in the same `docker-compose.yml`).
 
 ### Required Container Environment Variables
 
@@ -256,6 +258,31 @@ services:
       RCLONE_2_REMOTE_PATH: /backups
       RCLONE_2_USER: "user@example.com"
       RCLONE_2_PASS: "your-mega-password"
+```
+
+### MongoDB only
+
+```yaml
+services:
+  mongo:
+    image: mongo:7
+    labels:
+      - backup.enable=true
+    environment:
+      MONGO_INITDB_DATABASE: myapp
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: secret
+
+  backup:
+    image: zulkarnen/docker-db-backup:latest
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./backups:/backup
+    environment:
+      INTERVAL: 1h
+      BACKUP_FORMAT: compress
+      MAX_FILES: 7
 ```
 
 ### Mixed databases

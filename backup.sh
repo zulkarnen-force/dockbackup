@@ -351,7 +351,7 @@ backup_postgres() {
     log ERROR "Missing POSTGRES_DB / POSTGRES_USER / POSTGRES_PASSWORD in container: $container"
     return
   fi
-
+I
   local container_dir="$BACKUP_DIR/$container"
   mkdir -p "$container_dir"
   local timestamp
@@ -449,13 +449,18 @@ backup_mongo() {
   mongo_user=$(echo "$env_json" | jq -r '.[] | select(startswith("MONGO_INITDB_ROOT_USERNAME="))  | split("=")[1]')
   mongo_pass=$(echo "$env_json" | jq -r '.[] | select(startswith("MONGO_INITDB_ROOT_PASSWORD="))  | split("=")[1]')
 
-  # Bitnami variants
+  # MONGODB_INITDB_* variants (e.g. MONGODB_INITDB_ROOT_USERNAME)
+  [[ -z "$mongo_user" ]] && mongo_user=$(echo "$env_json" | jq -r '.[] | select(startswith("MONGODB_INITDB_ROOT_USERNAME="))  | split("=")[1]')
+  [[ -z "$mongo_pass" ]] && mongo_pass=$(echo "$env_json" | jq -r '.[] | select(startswith("MONGODB_INITDB_ROOT_PASSWORD="))  | split("=")[1]')
+  [[ -z "$mongo_db" ]]   && mongo_db=$(echo "$env_json"   | jq -r '.[] | select(startswith("MONGODB_INITDB_DATABASE="))       | split("=")[1]')
+
+  # Bitnami variants (MONGODB_ROOT_USER, MONGODB_ROOT_PASSWORD, MONGODB_DATABASE)
   [[ -z "$mongo_user" ]] && mongo_user=$(echo "$env_json" | jq -r '.[] | select(startswith("MONGODB_ROOT_USER="))     | split("=")[1]')
   [[ -z "$mongo_pass" ]] && mongo_pass=$(echo "$env_json" | jq -r '.[] | select(startswith("MONGODB_ROOT_PASSWORD=")) | split("=")[1]')
   [[ -z "$mongo_db" ]]   && mongo_db=$(echo "$env_json"   | jq -r '.[] | select(startswith("MONGODB_DATABASE="))      | split("=")[1]')
 
   if [[ -z "$mongo_user" || -z "$mongo_pass" ]]; then
-    log ERROR "Missing MONGO_INITDB_ROOT_USERNAME / MONGO_INITDB_ROOT_PASSWORD (or MONGODB_ variants) in container: $container"
+    log ERROR "Missing MONGO_INITDB_ROOT_USERNAME / MONGO_INITDB_ROOT_PASSWORD (or MONGODB_INITDB_ / MONGODB_ variants) in container: $container"
     return
   fi
 
@@ -469,9 +474,9 @@ backup_mongo() {
 
   log INFO "Creating backup -> $outfile"
 
-  local dump_cmd="mongodump --authenticationDatabase admin -u '$mongo_user' -p '$mongo_pass' --archive"
+  local dump_cmd="mongodump --authenticationDatabase admin -u '$mongo_user' -p '$mongo_pass' --archive --gzip"
   if [[ -n "$mongo_db" ]]; then
-    dump_cmd="mongodump --authenticationDatabase admin -u '$mongo_user' -p '$mongo_pass' --db '$mongo_db' --archive"
+    dump_cmd="mongodump --authenticationDatabase admin -u '$mongo_user' -p '$mongo_pass' --db '$mongo_db' --archive --gzip"
   fi
 
   docker exec "$container" \
