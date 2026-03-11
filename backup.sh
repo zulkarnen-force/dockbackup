@@ -351,7 +351,7 @@ backup_postgres() {
     log ERROR "Missing POSTGRES_DB / POSTGRES_USER / POSTGRES_PASSWORD in container: $container"
     return
   fi
-I
+  
   local container_dir="$BACKUP_DIR/$container"
   mkdir -p "$container_dir"
   local timestamp
