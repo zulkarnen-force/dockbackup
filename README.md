@@ -384,12 +384,40 @@ Backups are organized by container name, with filenames containing the database 
 
 ## GitHub Actions (CI/CD)
 
-This repository includes a GitHub Actions workflow that:
+This repository uses two workflows for a fully automated release pipeline:
 
-1. **Lints** the Dockerfile (Hadolint) and shell script (ShellCheck)
-2. **Builds** multi-arch images (`amd64` + `arm64`)
-3. **Pushes** to Docker Hub on every push to `main` and on version tags
-4. **Auto-updates** the Docker Hub README
+### Workflows
+
+**`release.yml`** — Automated versioning with [release-please](https://github.com/googleapis/release-please)
+
+- Runs on every push to `main`
+- Parses [Conventional Commits](https://www.conventionalcommits.org/) to determine the version bump
+- Opens a **Release PR** that updates the changelog and version
+- When the PR is merged, creates a GitHub Release and `v*` tag automatically
+
+**`docker-publish.yml`** — Build, lint, and publish
+
+- **On pull requests:** runs ShellCheck and Hadolint
+- **On version tags (`v*`):** builds multi-arch images and pushes to Docker Hub
+
+### Release Flow
+
+```
+commit (feat/fix/chore) → push to main → release-please opens PR
+                                        → merge PR → v* tag created
+                                                    → Docker image built & pushed
+```
+
+### Conventional Commits
+
+Use these prefixes in your commit messages:
+
+| Prefix              | Version bump | Example                               |
+| ------------------- | ------------ | ------------------------------------- |
+| `feat:`             | Minor        | `feat: add backup.databases label`    |
+| `fix:`              | Patch        | `fix: handle empty database list`     |
+| `feat!:` or `fix!:` | Major        | `feat!: change default backup format` |
+| `chore:` / `docs:`  | No release   | `docs: update README`                 |
 
 ### Setup
 
@@ -400,16 +428,7 @@ Add these secrets to your GitHub repository:
 | `DOCKERHUB_USERNAME` | Your Docker Hub username                                                              |
 | `DOCKERHUB_TOKEN`    | Docker Hub access token ([create one here](https://hub.docker.com/settings/security)) |
 
-### Tagging
-
-Push a semver tag to create a release:
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-This produces Docker tags: `1.0.0`, `1.0`, `1`, and `latest`.
+> **Note:** `GITHUB_TOKEN` is provided automatically — no extra setup needed for release-please.
 
 ---
 
