@@ -388,17 +388,16 @@ This repository uses two workflows for a fully automated release pipeline:
 
 ### Workflows
 
-**`release.yml`** — Automated versioning with [release-please](https://github.com/googleapis/release-please)
+**`release.yml`** — Automated versioning and Docker image publishing
 
 - Runs on every push to `main`
 - Parses [Conventional Commits](https://www.conventionalcommits.org/) to determine the version bump
 - Opens a **Release PR** that updates the changelog and version
-- When the PR is merged, creates a GitHub Release and `v*` tag automatically
+- When the PR is merged, creates a GitHub Release, then builds and pushes the Docker image
 
-**`docker-publish.yml`** — Build, lint, and publish
+**`lint.yml`** — Code quality checks on pull requests
 
-- **On pull requests:** runs ShellCheck and Hadolint
-- **On version tags (`v*`):** builds multi-arch images and pushes to Docker Hub
+- Runs ShellCheck and Hadolint on every PR
 
 ### Release Flow
 
