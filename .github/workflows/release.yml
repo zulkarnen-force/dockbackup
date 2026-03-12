@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-please
     if: needs.release-please.outputs.release_created == 'true'
-    environment: production
+    environment: dev
     steps:
       - uses: actions/checkout@v4
 
@@ -78,3 +78,19 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: ${{ env.IMAGE_NAME }}
           readme-filepath: ./README.md
+
+  cleanup-on-failure:
+    name: Cleanup Failed Release
+    runs-on: ubuntu-latest
+    needs: [release-please, build-and-push]
+    if: always() && needs.release-please.outputs.release_created == 'true' && needs.build-and-push.result == 'failure'
+    permissions:
+      contents: write
+    steps:
+      - name: Delete release and tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          echo "Build failed — cleaning up release $TAG_NAME"
+          gh release delete "$TAG_NAME" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
