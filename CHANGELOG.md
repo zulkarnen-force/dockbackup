@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/zulkarnen-force/dockbackup/compare/v1.3.0...v1.4.0) (2026-03-12)
+
+
+### Features
+
+* update environment to dev and add cleanup job for failed releases ([6f93690](https://github.com/zulkarnen-force/dockbackup/commit/6f93690a0d28d0a309a879f30d2a2cb834d2946d))
+
 ## [1.3.0](https://github.com/zulkarnen-force/dockbackup/compare/v1.2.0...v1.3.0) (2026-03-12)
 
 
