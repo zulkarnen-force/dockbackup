@@ -1,5 +1,6 @@
 # ── Example: Mixed databases ────────────────────────────────────────
 # PostgreSQL, MySQL, and MongoDB all backed up by a single agent.
+# Demonstrates backup.databases label for selecting specific databases.
 
 services:
   # ── PostgreSQL ─────────────────────────────────────────────────────
@@ -8,8 +9,8 @@ services:
     restart: unless-stopped
     labels:
       - backup.enable=true
+      - backup.databases=app,reporting
     environment:
-      POSTGRES_DB: app
       POSTGRES_USER: app
       POSTGRES_PASSWORD: secret
     volumes:
@@ -35,8 +36,8 @@ services:
     restart: unless-stopped
     labels:
       - backup.enable=true
+      - backup.databases=analytics,logs
     environment:
-      MONGO_INITDB_DATABASE: analytics
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: secret
     volumes:

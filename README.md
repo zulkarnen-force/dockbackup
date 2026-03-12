@@ -42,6 +42,27 @@ services:
       POSTGRES_PASSWORD: secret
 ```
 
+#### Selecting specific databases
+
+By default, the agent backs up the database defined in the container's environment variables (e.g. `POSTGRES_DB`, `MYSQL_DATABASE`). To back up specific databases — one or more — add the `backup.databases` label:
+
+```yaml
+services:
+  my-postgres:
+    image: postgres:16
+    labels:
+      - backup.enable=true
+      - backup.databases=myapp,analytics,logs
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: secret
+```
+
+- Comma-separated list of database names
+- Overrides the default database from env vars
+- Each database is backed up as a separate file
+- Works with PostgreSQL, MySQL/MariaDB, and MongoDB
+
 ### 2. Run the backup agent
 
 ```yaml
@@ -140,6 +161,15 @@ The agent inspects the container's **image name** to determine the database type
 | `*mongo*`     | MongoDB                      |
 
 This covers official images (`postgres:16`, `mysql:8`, `mongo:7`), Bitnami images (`bitnami/postgresql`, `bitnami/mongodb`), and custom images containing these keywords.
+
+---
+
+## Container Labels
+
+| Label              | Required | Description                                                                               |
+| ------------------ | -------- | ----------------------------------------------------------------------------------------- |
+| `backup.enable`    | Yes      | Set to `true` to enable backup for the container                                          |
+| `backup.databases` | No       | Comma-separated list of databases to back up. Overrides the default from env vars if set. |
 
 > **Note — MongoDB:** Unlike PostgreSQL and MySQL (which use `docker exec`), MongoDB backups run the agent's own `mongodump` binary and connect to the container via its Docker network IP. This is necessary because MongoDB 6.0+ images no longer bundle `mongodump`. The backup agent must share a Docker network with the MongoDB container (automatic when both are in the same `docker-compose.yml`).
 
@@ -293,8 +323,8 @@ services:
     image: postgres:16
     labels:
       - backup.enable=true
+      - backup.databases=app,reporting
     environment:
-      POSTGRES_DB: app
       POSTGRES_USER: app
       POSTGRES_PASSWORD: secret
 
@@ -312,8 +342,8 @@ services:
     image: mongo:7
     labels:
       - backup.enable=true
+      - backup.databases=analytics,logs
     environment:
-      MONGO_INITDB_DATABASE: analytics
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: secret
 
@@ -328,6 +358,8 @@ services:
       BACKUP_FORMAT: compress
       MAX_FILES: 7
 ```
+
+> In this example, `postgres-db` backs up two databases (`app` and `reporting`), `mysql-db` falls back to the env var (`shop`), and `mongo-db` backs up `analytics` and `logs` separately.
 
 ---
 

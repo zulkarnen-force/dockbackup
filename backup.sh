@@ -227,6 +227,10 @@ print_docs() {
   log INFO "Container discovery label:"
   log INFO "  $LABEL_FILTER"
   log INFO ""
+  log INFO "Optional label to select specific databases:"
+  log INFO "  backup.databases=db1,db2,..."
+  log INFO "  (if not set, uses container env vars as default)"
+  log INFO ""
   log INFO "Supported databases (auto-detected from container image):"
   log INFO "  PostgreSQL  -> postgres, bitnami/postgresql"
   log INFO "  MySQL/Maria -> mysql, mariadb, bitnami/mysql, bitnami/mariadb"
@@ -327,11 +331,30 @@ run_backup() {
 
     log INFO "Detected database type: $db_type (image: $image_name)"
 
-    case "$db_type" in
-      postgres) backup_postgres "$container" ;;
-      mysql)    backup_mysql    "$container" ;;
-      mongo)    backup_mongo    "$container" ;;
-    esac
+    # ── Read backup.databases label (optional) ────────────
+    local target_dbs
+    target_dbs=$(docker inspect "$container" | jq -r '.[0].Config.Labels["backup.databases"] // empty')
+
+    if [[ -n "$target_dbs" ]]; then
+      log INFO "Label backup.databases found: $target_dbs"
+      IFS=',' read -ra db_list <<< "$target_dbs"
+      for db_name in "${db_list[@]}"; do
+        db_name=$(echo "$db_name" | xargs)  # trim whitespace
+        [[ -z "$db_name" ]] && continue
+        log INFO "Backing up database: $db_name"
+        case "$db_type" in
+          postgres) backup_postgres "$container" "$db_name" ;;
+          mysql)    backup_mysql    "$container" "$db_name" ;;
+          mongo)    backup_mongo    "$container" "$db_name" ;;
+        esac
+      done
+    else
+      case "$db_type" in
+        postgres) backup_postgres "$container" ;;
+        mysql)    backup_mysql    "$container" ;;
+        mongo)    backup_mongo    "$container" ;;
+      esac
+    fi
 
   done
 }
@@ -339,6 +362,7 @@ run_backup() {
 # ── PostgreSQL backup ────────────────────────────────────────────────
 backup_postgres() {
   local container="$1"
+  local target_db="${2:-}"
   local env_json
   env_json=$(docker inspect "$container" | jq '.[0].Config.Env')
 
@@ -346,6 +370,11 @@ backup_postgres() {
   pg_db=$(echo "$env_json"   | jq -r '.[] | select(startswith("POSTGRES_DB="))       | split("=")[1]')
   pg_user=$(echo "$env_json" | jq -r '.[] | select(startswith("POSTGRES_USER="))     | split("=")[1]')
   pg_pass=$(echo "$env_json" | jq -r '.[] | select(startswith("POSTGRES_PASSWORD=")) | split("=")[1]')
+
+  # Override database name if specified via backup.databases label
+  if [[ -n "$target_db" ]]; then
+    pg_db="$target_db"
+  fi
 
   if [[ -z "$pg_db" || -z "$pg_user" || -z "$pg_pass" ]]; then
     log ERROR "Missing POSTGRES_DB / POSTGRES_USER / POSTGRES_PASSWORD in container: $container"
@@ -381,6 +410,7 @@ backup_postgres() {
 # ── MySQL / MariaDB backup ──────────────────────────────────────────
 backup_mysql() {
   local container="$1"
+  local target_db="${2:-}"
   local env_json
   env_json=$(docker inspect "$container" | jq '.[0].Config.Env')
 
@@ -405,6 +435,11 @@ backup_mysql() {
       my_user="root"
       my_pass="$root_pass"
     fi
+  fi
+
+  # Override database name if specified via backup.databases label
+  if [[ -n "$target_db" ]]; then
+    my_db="$target_db"
   fi
 
   if [[ -z "$my_db" || -z "$my_user" || -z "$my_pass" ]]; then
@@ -441,6 +476,7 @@ backup_mysql() {
 # ── MongoDB backup ───────────────────────────────────────────────────
 backup_mongo() {
   local container="$1"
+  local target_db="${2:-}"
   local env_json
   env_json=$(docker inspect "$container" | jq '.[0].Config.Env')
 
@@ -462,6 +498,11 @@ backup_mongo() {
   if [[ -z "$mongo_user" || -z "$mongo_pass" ]]; then
     log ERROR "Missing MONGO_INITDB_ROOT_USERNAME / MONGO_INITDB_ROOT_PASSWORD (or MONGODB_INITDB_ / MONGODB_ variants) in container: $container"
     return
+  fi
+
+  # Override database name if specified via backup.databases label
+  if [[ -n "$target_db" ]]; then
+    mongo_db="$target_db"
   fi
 
   local container_dir="$BACKUP_DIR/$container"
